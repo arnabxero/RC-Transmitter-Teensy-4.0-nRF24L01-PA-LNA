@@ -1,5 +1,5 @@
 /*
-  menu_data.h - Enhanced Data Structures with Range Settings
+  menu_data.h - Enhanced Data Structures with Range Settings and Factory Reset
   RC Transmitter for Teensy 4.0
 */
 
@@ -9,7 +9,7 @@
 #include <EEPROM.h>
 #include "config.h"
 
-// Menu states (enhanced with range settings, MPU6500 removed)
+// Menu states (enhanced with range settings, MPU6500 removed, factory reset added)
 enum MenuState {
   MENU_HIDDEN,
   MENU_MAIN,
@@ -35,7 +35,10 @@ enum MenuState {
   MENU_INFO,
   MENU_CAL_IN_PROGRESS,
   MENU_CANCEL_CONFIRM,
-  MENU_RADIO_TEST              // Added for radio test
+  MENU_RADIO_TEST,               // Added for radio test
+  MENU_FACTORY_RESET_CONFIRM,    // First factory reset confirmation
+  MENU_FACTORY_RESET_FINAL,      // Final factory reset confirmation
+  MENU_FACTORY_RESET_PROGRESS    // Factory reset progress animation
 };
 
 // LED Color modes
@@ -124,6 +127,16 @@ struct CalibrationData {
 SettingsData settings;
 CalibrationData calData;
 
+// Factory defaults instance
+FactoryDefaults factoryDefaults;
+
+// Factory reset variables
+bool factoryResetActive = false;
+int factoryResetStep = 0; // 0=clearing, 1=creating, 2=done
+unsigned long factoryResetStartTime = 0;
+unsigned long factoryResetStepTime = 0;
+#define FACTORY_RESET_STEP_DURATION 2000  // 2 seconds per step
+
 // EEPROM addresses - Teensy 4.0 has 4KB (4096 bytes) of emulated EEPROM
 #define EEPROM_CAL_ADDRESS 0
 #define EEPROM_SETTINGS_ADDRESS 512
@@ -151,6 +164,13 @@ int getCalibratedLeftPot();
 int getCalibratedRightPot();
 int freeMemory();
 
+// Factory reset function declarations
+void startFactoryReset();
+void updateFactoryReset();
+void drawFactoryResetScreen();
+void performFactoryReset();
+bool isFactoryResetActive();
+
 // Forward declarations for external functions
 extern bool getArmedStatus();
 extern void setLED(bool red, bool green, bool blue);
@@ -171,7 +191,7 @@ void initMenuData() {
 }
 
 void saveSettings() {
-  Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Saving settings to EEPROM...");
+  Serial.println("Saving settings to EEPROM...");
   settings.signature = EEPROM_SIGNATURE;
   
   // Teensy 4.0 EEPROM doesn't need commit() - it writes immediately
@@ -444,6 +464,194 @@ int freeMemory() {
   
   // The free space is approximately the difference between heap and stack
   return (stackTop - heapTop);
+}
+
+// Factory reset functions
+void startFactoryReset() {
+  Serial.println("Starting factory reset process...");
+  factoryResetActive = true;
+  factoryResetStep = 0;
+  factoryResetStartTime = millis();
+  factoryResetStepTime = millis();
+  
+  // Start the actual reset process
+  performFactoryReset();
+}
+
+void updateFactoryReset() {
+  if (!factoryResetActive) return;
+  
+  // Update progress steps
+  if (millis() - factoryResetStepTime >= FACTORY_RESET_STEP_DURATION) {
+    factoryResetStep++;
+    factoryResetStepTime = millis();
+    
+    if (factoryResetStep >= 3) {
+      // Factory reset complete
+      factoryResetActive = false;
+      Serial.println("Factory reset completed!");
+      
+      // Return to main menu
+      extern MenuState currentMenu;
+      extern int maxMenuItems;
+      extern int menuSelection;
+      extern int menuOffset;
+      currentMenu = MENU_MAIN;
+      maxMenuItems = 8;
+      menuSelection = 0;
+      menuOffset = 0;
+    }
+  }
+}
+
+void performFactoryReset() {
+  Serial.println("Performing factory reset - clearing EEPROM and restoring defaults...");
+  
+  // Clear EEPROM completely (write zeros)
+  for (int i = 0; i < 1024; i++) {
+    EEPROM.write(i, 0);
+  }
+  
+  // Apply factory defaults to settings
+  settings.joystickDeadzone = factoryDefaults.joystickDeadzone;
+  settings.displayBrightness = factoryDefaults.displayBrightness;
+  settings.ledEnabled = factoryDefaults.ledEnabled;
+  
+  // LED colors
+  for (int i = 0; i < 3; i++) {
+    settings.ledArmedColor[i] = factoryDefaults.ledArmedColor[i];
+    settings.ledDisarmedColor[i] = factoryDefaults.ledDisarmedColor[i];
+    settings.ledTransmitColor[i] = factoryDefaults.ledTransmitColor[i];
+    settings.ledErrorColor[i] = factoryDefaults.ledErrorColor[i];
+    settings.ledMenuColor[i] = factoryDefaults.ledMenuColor[i];
+  }
+  
+  // Radio settings
+  strcpy(settings.radioAddress, factoryDefaults.radioAddress);
+  settings.radioChannel = factoryDefaults.radioChannel;
+  
+  // Failsafe settings
+  settings.failsafeThrottle = factoryDefaults.failsafeThrottle;
+  settings.failsafeSteering = factoryDefaults.failsafeSteering;
+  settings.failsafeEnabled = factoryDefaults.failsafeEnabled;
+  
+  // Range settings
+  settings.throttleMinPWM = factoryDefaults.throttleMinPWM;
+  settings.throttleMaxPWM = factoryDefaults.throttleMaxPWM;
+  settings.steerMinDegree = factoryDefaults.steerMinDegree;
+  settings.steerNeutralDegree = factoryDefaults.steerNeutralDegree;
+  settings.steerMaxDegree = factoryDefaults.steerMaxDegree;
+  
+  settings.signature = EEPROM_SIGNATURE;
+  
+  // Apply factory defaults to calibration
+  calData.rightJoyX_min = factoryDefaults.rightJoyX_min;
+  calData.rightJoyX_neutral = factoryDefaults.rightJoyX_neutral;
+  calData.rightJoyX_max = factoryDefaults.rightJoyX_max;
+  calData.rightJoyY_min = factoryDefaults.rightJoyY_min;
+  calData.rightJoyY_neutral = factoryDefaults.rightJoyY_neutral;
+  calData.rightJoyY_max = factoryDefaults.rightJoyY_max;
+  calData.leftJoyX_min = factoryDefaults.leftJoyX_min;
+  calData.leftJoyX_neutral = factoryDefaults.leftJoyX_neutral;
+  calData.leftJoyX_max = factoryDefaults.leftJoyX_max;
+  calData.leftJoyY_min = factoryDefaults.leftJoyY_min;
+  calData.leftJoyY_neutral = factoryDefaults.leftJoyY_neutral;
+  calData.leftJoyY_max = factoryDefaults.leftJoyY_max;
+  calData.leftPot_min = factoryDefaults.leftPot_min;
+  calData.leftPot_neutral = factoryDefaults.leftPot_neutral;
+  calData.leftPot_max = factoryDefaults.leftPot_max;
+  calData.rightPot_min = factoryDefaults.rightPot_min;
+  calData.rightPot_neutral = factoryDefaults.rightPot_neutral;
+  calData.rightPot_max = factoryDefaults.rightPot_max;
+  
+  // Reset calibration flags (all uncalibrated)
+  calData.rightJoyX_calibrated = false;
+  calData.rightJoyY_calibrated = false;
+  calData.leftJoyX_calibrated = false;
+  calData.leftJoyY_calibrated = false;
+  calData.leftPot_calibrated = false;
+  calData.rightPot_calibrated = false;
+  
+  calData.signature = EEPROM_SIGNATURE;
+  
+  // Save to EEPROM
+  saveSettings();
+  saveCalibration();
+  
+  // Apply settings immediately
+  applyLEDSettings();
+  applyDisplayBrightness();
+  updateDataPacketRanges();
+  
+  Serial.println("Factory reset data applied and saved to EEPROM");
+}
+
+void drawFactoryResetScreen() {
+  // White background, black text
+  display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+  display.setTextColor(SSD1306_BLACK);
+  display.setTextSize(1);
+  
+  // Progress calculation (0 to 1)
+  unsigned long stepElapsed = millis() - factoryResetStepTime;
+  float stepProgress = (float)stepElapsed / (float)FACTORY_RESET_STEP_DURATION;
+  if (stepProgress > 1.0) stepProgress = 1.0;
+  
+  // Overall progress (3 steps total)
+  float overallProgress = ((float)factoryResetStep + stepProgress) / 3.0;
+  if (overallProgress > 1.0) overallProgress = 1.0;
+  
+  // Step text - positioned in yellow region (0-15 pixels)
+  String stepText;
+  switch (factoryResetStep) {
+    case 0: stepText = "Clearing Settings"; break;
+    case 1: stepText = "Creating Settings"; break;
+    case 2: stepText = "Done Resetting"; break;
+    default: stepText = "Factory Reset"; break;
+  }
+  
+  // Center the step text in yellow region
+  int textWidth = stepText.length() * 6;
+  int textX = (SCREEN_WIDTH - textWidth) / 2;
+  display.setCursor(textX, 4); // Y=4 to center in yellow region (0-15)
+  display.println(stepText);
+  
+  // Progress bar - positioned in blue region
+  int progressBarX = 20;
+  int progressBarY = 25; // Blue region starts at 16, so 25 is well within it
+  int progressBarWidth = SCREEN_WIDTH - 40;
+  int progressBarHeight = 10;
+  
+  // Draw progress bar outline
+  display.drawRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight, SSD1306_BLACK);
+  
+  // Fill progress bar
+  int fillWidth = (int)(overallProgress * (progressBarWidth - 2));
+  if (fillWidth > 0) {
+    display.fillRect(progressBarX + 1, progressBarY + 1, fillWidth, progressBarHeight - 2, SSD1306_BLACK);
+  }
+  
+  // Percentage text - positioned in blue region
+  String percentText = String((int)(overallProgress * 100)) + "%";
+  int percentWidth = percentText.length() * 6;
+  int percentX = (SCREEN_WIDTH - percentWidth) / 2;
+  display.setCursor(percentX, 40); // Blue region
+  display.println(percentText);
+  
+  // Additional status info - positioned in blue region
+  display.setCursor(10, 55); // Blue region
+  if (factoryResetStep < 2) {
+    display.print("Please wait...");
+  } else {
+    display.print("Reset Complete!");
+  }
+  
+  // Reset text color for other functions
+  display.setTextColor(SSD1306_WHITE);
+}
+
+bool isFactoryResetActive() {
+  return factoryResetActive;
 }
 
 #endif // MENU_DATA_H

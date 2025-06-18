@@ -1,5 +1,5 @@
 /*
-  menu_display.h - Enhanced Display Functions with Range Settings
+  menu_display.h - Enhanced Display Functions with Range Settings and Factory Reset
   RC Transmitter for Teensy 4.0 (MPU6500 Removed)
 */
 
@@ -41,7 +41,7 @@ void drawMainMenus() {
         {"System Info", true, true},
         {"Radio Test", true, false},
         {"Display Test", true, false},
-        {"Factory Reset", true, false},
+        {"Factory Reset", true, true},  // Changed to hasSubmenu = true
         {"Exit", true, false}
       };
       drawScrollableMenu(items, 8, "RC TX MENU");
@@ -143,6 +143,86 @@ void drawMainMenus() {
         {"Back", true, false}
       };
       drawScrollableMenu(items, 4, "System Info");
+      break;
+    }
+    
+    // Factory Reset Confirmation Screens
+    case MENU_FACTORY_RESET_CONFIRM: {
+      // Draw white background confirmation dialog
+      display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+      display.setTextColor(SSD1306_BLACK);
+      display.setTextSize(1);
+      
+      // Title
+      display.setCursor(15, 5);
+      display.println("Factory Reset");
+      
+      // Warning message
+      display.setCursor(5, 20);
+      display.println("Are you sure you want");
+      display.setCursor(5, 30);
+      display.println("to reset all settings");
+      display.setCursor(5, 40);
+      display.println("to factory defaults?");
+      
+      // Selection options
+      display.setCursor(20, 55);
+      if (menuSelection == 0) {
+        display.print("[No]");
+      } else {
+        display.print("No");
+      }
+      
+      display.print("    ");
+      
+      if (menuSelection == 1) {
+        display.print("[Yes]");
+      } else {
+        display.print("Yes");
+      }
+      
+      display.setTextColor(SSD1306_WHITE);
+      break;
+    }
+    
+    case MENU_FACTORY_RESET_FINAL: {
+      // Draw white background final confirmation
+      display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+      display.setTextColor(SSD1306_BLACK);
+      display.setTextSize(1);
+      
+      // Title with emphasis
+      display.setCursor(20, 5);
+      display.println("FINAL WARNING");
+      
+      // Strong warning message
+      display.setCursor(8, 20);
+      display.println("ARE YOU ABSOLUTELY");
+      display.setCursor(35, 30);
+      display.println("SURE?");
+      
+      // Selection options at bottom
+      display.setCursor(20, 57);
+      if (menuSelection == 0) {
+        display.print("[No]");
+      } else {
+        display.print("No");
+      }
+      
+      display.print("    ");
+      
+      if (menuSelection == 1) {
+        display.print("[YES]");
+      } else {
+        display.print("YES");
+      }
+      
+      display.setTextColor(SSD1306_WHITE);
+      break;
+    }
+    
+    case MENU_FACTORY_RESET_PROGRESS: {
+      drawFactoryResetScreen();
       break;
     }
   }

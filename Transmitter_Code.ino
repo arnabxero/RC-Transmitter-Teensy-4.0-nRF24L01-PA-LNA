@@ -1,10 +1,10 @@
 /*
-  RC Transmitter for Teensy 4.0 - V3 with Advanced Menu System
+  RC Transmitter for Teensy 4.0 - V3 with Advanced Menu System and Factory Reset
   Modular design with calibration and menu system
   
   Files:
   - Tx_Code_Teensy.ino (this file): Main setup and loop
-  - menu.h: Advanced menu system with calibration
+  - menu.h: Advanced menu system with calibration and factory reset
   - display.h: Display functions and UI
   - controls.h: Button and joystick handling  
   - radio.h: NRF24 communication
@@ -19,6 +19,7 @@
   - Calibrated control values for better precision
   - Fixed LED settings that properly respect user preferences
   - Teensy 4.0 optimized pin layout
+  - Factory Reset with multi-step confirmation and animated progress
 */
 
 #include "config.h"
@@ -44,7 +45,7 @@ void setup() {
   
   Serial.println("=====================================");
   Serial.println("RC Transmitter V3 for Teensy 4.0 Starting...");
-  Serial.println("Features: Menu System + Calibration");
+  Serial.println("Features: Menu System + Calibration + Factory Reset");
   Serial.println("=====================================");
   
   // Initialize all modules in order
@@ -76,11 +77,12 @@ void setup() {
   Serial.println("Setup Complete! Ready to transmit.");
   Serial.println("Hold OK button for 2 seconds to enter menu");
   Serial.println("Left trigger down = ARM system");
+  Serial.println("Factory Reset available in main menu");
   Serial.println("=====================================");
 }
 
 void loop() {
-  // Update menu system first (handles OK button long press)
+  // Update menu system first (handles OK button long press and factory reset)
   updateMenu();
   
   // Read controls (includes calibrated joystick values)
@@ -130,6 +132,7 @@ void printSystemStatus() {
   Serial.print("Armed: "); Serial.println(getArmedStatus() ? "YES" : "NO");
   Serial.print("Radio: "); Serial.println(isRadioOK() ? "OK" : "FAILED");
   Serial.print("Menu Active: "); Serial.println(isMenuActive() ? "YES" : "NO");
+  Serial.print("Factory Reset Active: "); Serial.println(isFactoryResetActive() ? "YES" : "NO");
   Serial.print("Throttle: "); Serial.print(data.throttle); 
   Serial.print(" Steering: "); Serial.println(data.steering);
   Serial.print("Packets sent: "); Serial.println(data.counter);
@@ -145,5 +148,6 @@ void printSystemStatus() {
   Serial.println(settings.ledArmedColor[2] ? "1" : "0");
   
   Serial.println("Hold OK for menu, Left trigger to arm");
+  Serial.println("Factory Reset: Main Menu > Factory Reset");
   Serial.println("--------------------");
 }

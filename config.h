@@ -80,4 +80,47 @@ extern RCData data;
 // Debug constants
 #define DEBUG_INTERVAL 100      // Print debug every 100 packets
 
+// Factory Reset Default Values
+struct FactoryDefaults {
+  // Joystick settings
+  int joystickDeadzone = 50;
+  
+  // Display settings  
+  int displayBrightness = 255;
+  
+  // LED settings
+  bool ledEnabled = true;
+  bool ledArmedColor[3] = {false, true, false};      // Green
+  bool ledDisarmedColor[3] = {true, false, false};   // Red
+  bool ledTransmitColor[3] = {false, false, true};   // Blue
+  bool ledErrorColor[3] = {true, true, false};       // Yellow
+  bool ledMenuColor[3] = {true, false, true};        // Magenta
+  
+  // Radio settings
+  char radioAddress[6] = "BOAT1";
+  int radioChannel = 76;
+  
+  // Failsafe settings
+  int failsafeThrottle = 0;
+  int failsafeSteering = 0;
+  bool failsafeEnabled = true;
+  
+  // Range settings
+  int throttleMinPWM = 1100;
+  int throttleMaxPWM = 1900;
+  int steerMinDegree = -65;
+  int steerNeutralDegree = 0;
+  int steerMaxDegree = 40;
+  
+  // Calibration defaults
+  int rightJoyX_min = 0, rightJoyX_neutral = 512, rightJoyX_max = 1023;
+  int rightJoyY_min = 0, rightJoyY_neutral = 512, rightJoyY_max = 1023;
+  int leftJoyX_min = 0, leftJoyX_neutral = 512, leftJoyX_max = 1023;
+  int leftJoyY_min = 0, leftJoyY_neutral = 512, leftJoyY_max = 1023;
+  int leftPot_min = 0, leftPot_neutral = 512, leftPot_max = 1023;
+  int rightPot_min = 0, rightPot_neutral = 512, rightPot_max = 1023;
+};
+
+extern FactoryDefaults factoryDefaults;
+
 #endif

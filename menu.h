@@ -1,5 +1,5 @@
 /*
-  menu.h - Enhanced Core Menu System with Range Settings
+  menu.h - Enhanced Core Menu System with Range Settings and Factory Reset
   RC Transmitter for Teensy 4.0 (MPU6500 Removed)
 */
 
@@ -59,10 +59,16 @@ void initMenu() {
   initMenuSettings();
   initMenuCalibration();
   
-  Serial.println("Enhanced menu system initialized with Range Settings!");
+  Serial.println("Enhanced menu system initialized with Range Settings and Factory Reset!");
 }
 
 void updateMenu() {
+  // Handle factory reset updates first
+  if (isFactoryResetActive()) {
+    updateFactoryReset();
+    return; // Don't process other menu updates during factory reset
+  }
+  
   // Handle cancel confirmation first
   if (cancelConfirmActive) {
     handleCancelConfirmation();
@@ -264,6 +270,14 @@ void goBack() {
       currentMenu = MENU_MAIN;
       maxMenuItems = 8;
       break;
+    case MENU_FACTORY_RESET_CONFIRM:
+      currentMenu = MENU_MAIN;
+      maxMenuItems = 8;
+      break;
+    case MENU_FACTORY_RESET_FINAL:
+      currentMenu = MENU_FACTORY_RESET_CONFIRM;
+      maxMenuItems = 2;
+      break;
     case MENU_JOYSTICK_CAL:
     case MENU_POTENTIOMETER_CAL:
       currentMenu = MENU_CALIBRATION;
@@ -321,6 +335,10 @@ void selectMenuItem() {
           extern void startRadioTest();
           startRadioTest();
           currentMenu = MENU_RADIO_TEST;
+          break;
+        case 6: // Factory Reset - go to confirmation
+          currentMenu = MENU_FACTORY_RESET_CONFIRM;
+          maxMenuItems = 2; // No/Yes options
           break;
         case 7: // Exit
           exitMenu();
@@ -403,6 +421,26 @@ void selectMenuItem() {
         return;
       }
       break;
+      
+    // Factory Reset Menu Handling
+    case MENU_FACTORY_RESET_CONFIRM:
+      if (menuSelection == 0) { // No selected
+        goBack(); // Return to main menu
+      } else { // Yes selected
+        currentMenu = MENU_FACTORY_RESET_FINAL;
+        maxMenuItems = 2; // No/Yes options
+        menuSelection = 0; // Default to No on final confirmation
+      }
+      return;
+      
+    case MENU_FACTORY_RESET_FINAL:
+      if (menuSelection == 0) { // No selected
+        goBack(); // Return to previous confirmation
+      } else { // YES selected - start factory reset
+        currentMenu = MENU_FACTORY_RESET_PROGRESS;
+        startFactoryReset();
+      }
+      return;
   }
   
   menuSelection = 0;
@@ -420,8 +458,10 @@ void drawMenu() {
   
   display.clearDisplay();
   
-  // Check if we're in setting lockout and show saving screen
-  if (isInSettingLockout()) {
+  // Check for factory reset first
+  if (isFactoryResetActive()) {
+    drawFactoryResetScreen();
+  } else if (isInSettingLockout()) {
     drawSettingSaveScreen();
   } else if (cancelConfirmActive) {
     drawCancelConfirmation();
