@@ -26,6 +26,7 @@
 #include "display.h" 
 #include "controls.h"
 #include "menu.h"
+#include "radio_test.h" // Added for radio testing
 
 // Global variables
 RCData data;

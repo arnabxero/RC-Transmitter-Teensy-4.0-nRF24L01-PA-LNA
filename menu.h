@@ -89,6 +89,10 @@ void updateMenu() {
         enterMenu();
         Serial.println("OK pressed from homepage - entering menu");
         lastNavigation = millis();
+      } else if (currentMenu == MENU_RADIO_TEST) {
+        // OK button pressed during radio test - go back to main menu
+        goBack();
+        lastNavigation = millis();
       } else if (!isSettingActive() && !isCalibrationActive()) {
         // Only handle menu selection if we're not in setting or calibration mode
         if (!isInSettingLockout()) {
@@ -253,6 +257,13 @@ void goBack() {
       currentMenu = MENU_MAIN;
       maxMenuItems = 8;
       break;
+    case MENU_RADIO_TEST:
+      // Reset radio test state and go back to main menu
+      extern void resetRadioTest();
+      resetRadioTest();
+      currentMenu = MENU_MAIN;
+      maxMenuItems = 8;
+      break;
     case MENU_JOYSTICK_CAL:
     case MENU_POTENTIOMETER_CAL:
       currentMenu = MENU_CALIBRATION;
@@ -304,6 +315,12 @@ void selectMenuItem() {
         case 3: // System Info
           currentMenu = MENU_INFO;
           maxMenuItems = 4;
+          break;
+        case 4: // Radio Test
+          // Start radio test and show results
+          extern void startRadioTest();
+          startRadioTest();
+          currentMenu = MENU_RADIO_TEST;
           break;
         case 7: // Exit
           exitMenu();
@@ -412,6 +429,10 @@ void drawMenu() {
     drawMenuCalibration();
   } else if (isSettingActive()) {
     drawMenuSettings();
+  } else if (currentMenu == MENU_RADIO_TEST) {
+    // Draw radio test screen
+    extern void drawRadioTestScreen();
+    drawRadioTestScreen();
   } else {
     drawMainMenus();
   }

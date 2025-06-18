@@ -151,6 +151,7 @@ void initMenuSettings() {
 }
 
 void updateMenuSettings() {
+  Serial.println("---------------Updating menu settings...");
   // Check if we're in the lockout period after completing a setting
   if (settingJustCompleted) {
     if (millis() - settingCompletionTime > SETTING_LOCKOUT_PERIOD) {

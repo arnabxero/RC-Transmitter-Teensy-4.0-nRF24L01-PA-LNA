@@ -34,7 +34,8 @@ enum MenuState {
   MENU_STEER_MAX_SETTING,        // Steering maximum degrees
   MENU_INFO,
   MENU_CAL_IN_PROGRESS,
-  MENU_CANCEL_CONFIRM
+  MENU_CANCEL_CONFIRM,
+  MENU_RADIO_TEST              // Added for radio test
 };
 
 // LED Color modes
@@ -170,6 +171,7 @@ void initMenuData() {
 }
 
 void saveSettings() {
+  Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Saving settings to EEPROM...");
   settings.signature = EEPROM_SIGNATURE;
   
   // Teensy 4.0 EEPROM doesn't need commit() - it writes immediately
