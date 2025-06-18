@@ -150,7 +150,7 @@ void drawThrottleBar() {
   
   // Center line
   int centerY = barY + barHeight / 2;
-  display.drawLine(barX, centerY, barX + barWidth, centerY, SSD1306_WHITE);
+  display.drawLine(barX, centerY, barX + barWidth - 1, centerY, SSD1306_WHITE);
 }
 
 void drawSteeringBar() {
@@ -178,23 +178,20 @@ void drawSteeringBar() {
   
   // Center line
   int centerX = barX + barWidth / 2;
-  display.drawLine(centerX, barY, centerX, barY + barHeight, SSD1306_WHITE);
+  display.drawLine(centerX, barY, centerX, barY + barHeight - 1, SSD1306_WHITE);
 }
 
 void displayReady() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.println("RC Transmitter");
-  display.println("Ready!");
+  display.println("RC TX - Ready!");
   display.println("");
-  display.print("Radio: ");
+  display.print("Radio Status: ");
   display.println(isRadioOK() ? "OK" : "FAIL");
-  display.println("");
+  display.println("Current Config:");
   display.println("Right Joy X = Steer");
   display.println("Left Joy Y = Throttle");
-  display.println("");
-  display.println("Hold OK for menu");
   display.display();
   delay(2000); // Show for 2 seconds
 }
