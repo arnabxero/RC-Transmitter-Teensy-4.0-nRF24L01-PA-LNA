@@ -41,10 +41,11 @@ void drawMainMenus() {
         {"System Info", true, true},
         {"Radio Test", true, false},
         {"Display Test", true, false},
+        {"Input Test", true, false},     // ADD THIS LINE (Comprehensive input test)
         {"Factory Reset", true, true},  // Changed to hasSubmenu = true
         {"Exit", true, false}
       };
-      drawScrollableMenu(items, 8, "RC TX MENU");
+      drawScrollableMenu(items, 9, "RC TX MENU");  // Changed from 8 to 9
       break;
     }
     

@@ -39,7 +39,8 @@ enum MenuState {
   MENU_FACTORY_RESET_CONFIRM,    // First factory reset confirmation
   MENU_FACTORY_RESET_FINAL,      // Final factory reset confirmation
   MENU_FACTORY_RESET_PROGRESS,    // Factory reset progress animation
-  MENU_DISPLAY_TEST
+  MENU_DISPLAY_TEST,
+  MENU_BUTTON_TEST        // Input test menu
 };
 
 // LED Color modes

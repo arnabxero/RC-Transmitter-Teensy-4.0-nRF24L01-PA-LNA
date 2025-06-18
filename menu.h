@@ -14,6 +14,8 @@
 #include "menu_settings.h"
 #include "menu_calibration.h"
 #include "display_test.h"
+#include "test_buttons.h"
+
 
 
 // Menu navigation variables - declare extern where used in other files
@@ -74,6 +76,12 @@ void updateMenu() {
   // Handle display test updates
   if (isDisplayTestActive()) {
     updateDisplayTest();
+    return;
+  }
+
+  // Handle input test updates
+  if (isButtonTestActive()) {
+    updateButtonTest();
     return;
   }
     
@@ -226,12 +234,12 @@ int getNavigationDirection() {
 void enterMenu() {
   Serial.println("Entering enhanced menu...");
   currentMenu = MENU_MAIN;
-  maxMenuItems = 8;  // Main menu items count
+  maxMenuItems = 9;  // Changed from 8 to 9
   menuSelection = 0;
   menuOffset = 0;
   menuTimer = millis();
   menuActive = true;
-  applyLEDSettings(); // Show menu LED color
+  applyLEDSettings();
 }
 
 void exitMenu() {
@@ -273,6 +281,12 @@ void goBack() {
       resetDisplayTest();
       currentMenu = MENU_MAIN;
       maxMenuItems = 8;
+      break;
+    case MENU_BUTTON_TEST:
+      // Reset input test state and go back to main menu
+      resetButtonTest();
+      currentMenu = MENU_MAIN;
+      maxMenuItems = 9;  // Changed from 8 to 9 to include input test
       break;
     case MENU_INFO:
       currentMenu = MENU_MAIN;
@@ -352,15 +366,18 @@ void selectMenuItem() {
           currentMenu = MENU_RADIO_TEST;
           break;
         case 5: // Display Test
-            // Start display test and show results
-            startDisplayTest();
-            currentMenu = MENU_DISPLAY_TEST;
-            break;
-        case 6: // Factory Reset - go to confirmation
-          currentMenu = MENU_FACTORY_RESET_CONFIRM;
-          maxMenuItems = 2; // No/Yes options
+          startDisplayTest();
+          currentMenu = MENU_DISPLAY_TEST;
           break;
-        case 7: // Exit
+        case 6: // Input Test - NEW! (includes joysticks, pots, buttons, switches)
+          startButtonTest();
+          currentMenu = MENU_BUTTON_TEST;
+          break;
+        case 7: // Factory Reset
+          currentMenu = MENU_FACTORY_RESET_CONFIRM;
+          maxMenuItems = 2;
+          break;
+        case 8: // Exit
           exitMenu();
           return;
       }
@@ -495,6 +512,8 @@ void drawMenu() {
     // Draw radio test screen
     extern void drawRadioTestScreen();
     drawRadioTestScreen();
+  } else if (isButtonTestActive()) {
+    drawButtonTestScreen();
   } else {
     drawMainMenus();
   }
