@@ -38,7 +38,8 @@ enum MenuState {
   MENU_RADIO_TEST,               // Added for radio test
   MENU_FACTORY_RESET_CONFIRM,    // First factory reset confirmation
   MENU_FACTORY_RESET_FINAL,      // Final factory reset confirmation
-  MENU_FACTORY_RESET_PROGRESS    // Factory reset progress animation
+  MENU_FACTORY_RESET_PROGRESS,    // Factory reset progress animation
+  MENU_DISPLAY_TEST
 };
 
 // LED Color modes

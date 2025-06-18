@@ -13,6 +13,8 @@
 #include "menu_display.h"
 #include "menu_settings.h"
 #include "menu_calibration.h"
+#include "display_test.h"
+
 
 // Menu navigation variables - declare extern where used in other files
 MenuState currentMenu = MENU_HIDDEN;
@@ -68,6 +70,13 @@ void updateMenu() {
     updateFactoryReset();
     return; // Don't process other menu updates during factory reset
   }
+
+  // Handle display test updates
+  if (isDisplayTestActive()) {
+    updateDisplayTest();
+    return;
+  }
+    
   
   // Handle cancel confirmation first
   if (cancelConfirmActive) {
@@ -259,6 +268,12 @@ void goBack() {
       currentMenu = MENU_MAIN;
       maxMenuItems = 8;
       break;
+    case MENU_DISPLAY_TEST:
+      // Reset display test state and go back to main menu
+      resetDisplayTest();
+      currentMenu = MENU_MAIN;
+      maxMenuItems = 8;
+      break;
     case MENU_INFO:
       currentMenu = MENU_MAIN;
       maxMenuItems = 8;
@@ -336,6 +351,11 @@ void selectMenuItem() {
           startRadioTest();
           currentMenu = MENU_RADIO_TEST;
           break;
+        case 5: // Display Test
+            // Start display test and show results
+            startDisplayTest();
+            currentMenu = MENU_DISPLAY_TEST;
+            break;
         case 6: // Factory Reset - go to confirmation
           currentMenu = MENU_FACTORY_RESET_CONFIRM;
           maxMenuItems = 2; // No/Yes options
@@ -461,6 +481,8 @@ void drawMenu() {
   // Check for factory reset first
   if (isFactoryResetActive()) {
     drawFactoryResetScreen();
+  } else if (isDisplayTestActive()) {
+    drawDisplayTestScreen();
   } else if (isInSettingLockout()) {
     drawSettingSaveScreen();
   } else if (cancelConfirmActive) {
