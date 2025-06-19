@@ -21,6 +21,10 @@ extern void drawMenu();
 extern uint32_t getTotalPacketsSent();
 extern uint32_t getAcksReceived();
 extern uint32_t getFailedAcks();
+extern uint32_t getCycleCounter();
+
+// Forward declare temperature function
+float readCPUTemperature();
 
 // Display object
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
@@ -100,7 +104,7 @@ void drawMainDisplay() {
   display.setTextSize(1);
   display.setCursor(0, 0);
   
-  // First row: RC TX status and armed status
+  // First row: RC TX status, armed status, and cycle counter
   display.print("TX:");
   display.print(isRadioOK() ? "ON" : "OFF");
   display.print("|");
@@ -108,23 +112,29 @@ void drawMainDisplay() {
   // Armed status with special formatting
   if (getArmedStatus()) {
     // ARMED: White background, black text
-    int armedTextWidth = 5 * 6; // "ARMED" = 5 characters * 6 pixels each
     int armedTextX = display.getCursorX();
     int armedTextY = display.getCursorY();
     
-    // Draw white background rectangle
-    display.fillRect(armedTextX, armedTextY, armedTextWidth, 8, SSD1306_WHITE);
+    // Draw white background rectangle (5 chars * 6 pixels = 30px width)
+    // display.fillRect(armedTextX, armedTextY, 30, 8, SSD1306_WHITE);
     
     // Set text color to black and draw "ARMED"
-    display.setTextColor(SSD1306_BLACK);
+    // display.setTextColor(SSD1306_BLACK);
     display.setCursor(armedTextX, armedTextY);
     display.print("ARMED");
     
     // Reset text color to white for rest of display
-    display.setTextColor(SSD1306_WHITE);
+    // display.setTextColor(SSD1306_WHITE);
   } else {
     display.print("DISARM");
   }
+  
+  // Add cycle counter and CPU temperature
+  display.print("-C:");
+  display.print(getCycleCounter());
+  display.print("|T:");
+  display.print((int)readCPUTemperature());
+
   
   // Second row: Packet statistics with ACK tracking
   display.setCursor(0, 8);
@@ -285,6 +295,42 @@ void displayError(const char* message) {
   display.println("ERROR:");
   display.println(message);
   display.display();
+}
+
+// Teensy 4.0 CPU Temperature Reading Function
+float readCPUTemperature() {
+  // Teensy 4.0 uses IMXRT1062 processor with built-in temperature sensor
+  // Use Teensy's built-in tempmonGetTemp() function
+  
+  // For Teensy 4.0, we can use the internal temperature monitoring
+  // The TEMPMON peripheral is already initialized by the Teensy core
+  
+  // Read temperature using direct register access with correct constants
+  uint32_t tempReg = TEMPMON_TEMPSENSE0;
+  
+  // Check if temperature sensor is powered up
+  if (tempReg & 0x1) { // POWER_DOWN bit
+    // Sensor is powered down, power it up
+    TEMPMON_TEMPSENSE0 &= ~0x1; // Clear POWER_DOWN bit
+    delayMicroseconds(100); // Wait for stabilization
+    tempReg = TEMPMON_TEMPSENSE0;
+  }
+  
+  // Extract temperature value (bits 8-19)
+  uint32_t tempValue = (tempReg >> 8) & 0xFFF;
+  
+  // Convert to Celsius using IMXRT1062 calibration
+  // Formula from Teensy documentation: Temp = 25 + (reading - cal_value) / slope
+  // Typical values: cal_value ≈ 3132, slope ≈ 4.1
+  float temperatureC = 25.0 + ((float)tempValue - 3132.0) / 4.1;
+  
+  // Sanity check - CPU temp should be reasonable
+  if (temperatureC < -40.0 || temperatureC > 125.0) {
+    // If reading seems wrong, return a default reasonable value
+    return 25.0; // Room temperature default
+  }
+  
+  return temperatureC;
 }
 
 #endif

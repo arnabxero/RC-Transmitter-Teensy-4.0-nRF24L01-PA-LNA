@@ -20,6 +20,7 @@ extern bool radioOK;
 extern uint32_t totalPacketsSent;
 extern uint32_t acksReceived;
 extern uint32_t failedAcks;
+extern uint32_t cycleCounter;
 
 // Function declarations
 void initRadio();
@@ -28,7 +29,9 @@ bool isRadioOK();
 uint32_t getTotalPacketsSent();
 uint32_t getAcksReceived();
 uint32_t getFailedAcks();
+uint32_t getCycleCounter();
 float getAckSuccessRate();
+void resetCountersIfNeeded();
 
 // Radio implementation
 RF24 radio(RADIO_CE, RADIO_CSN);
@@ -38,6 +41,7 @@ bool radioOK = false;
 uint32_t totalPacketsSent = 0;
 uint32_t acksReceived = 0;
 uint32_t failedAcks = 0;
+uint32_t cycleCounter = 0;
 
 void initRadio() {
   Serial.print("Initializing radio with ACK system... ");
@@ -63,6 +67,7 @@ void initRadio() {
     totalPacketsSent = 0;
     acksReceived = 0;
     failedAcks = 0;
+    cycleCounter = 0;
     
     extern void applyLEDSettings();
     applyLEDSettings();
@@ -86,6 +91,9 @@ void transmitData() {
     failedAcks++;
   }
   
+  // Check if we need to reset counters at 9999
+  resetCountersIfNeeded();
+  
   // Debug output every DEBUG_INTERVAL packets
   if (data.counter % DEBUG_INTERVAL == 0) {
     Serial.print("TX - T:");
@@ -98,12 +106,32 @@ void transmitData() {
     Serial.print(result ? "OK" : "FAIL");
     Serial.print(" Success:");
     Serial.print(getAckSuccessRate(), 1);
-    Serial.println("%");
+    Serial.print("% Cycle:");
+    Serial.println(cycleCounter);
     
     if (!result) {
       Serial.println("Warning: ACK not received - check receiver");
     }
   }
+}
+
+void resetCountersIfNeeded() {
+  if (totalPacketsSent >= 9999) {
+    cycleCounter++;
+    totalPacketsSent = 0;
+    acksReceived = 0;
+    failedAcks = 0;
+    data.counter = 0; // Reset packet counter too
+    
+    Serial.println("=====================================");
+    Serial.print("COUNTERS RESET! Cycle #");
+    Serial.println(cycleCounter);
+    Serial.println("=====================================");
+  }
+}
+
+uint32_t getCycleCounter() {
+  return cycleCounter;
 }
 
 bool isRadioOK() {
