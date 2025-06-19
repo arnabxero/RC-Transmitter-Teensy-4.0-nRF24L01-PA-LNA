@@ -1,5 +1,5 @@
 /*
-  display.h - OLED display functions with Menu Integration
+  Enhanced display.h - OLED display with ACK tracking
   RC Transmitter for Teensy 4.0
 */
 
@@ -16,6 +16,11 @@
 // Forward declare menu functions
 extern bool isMenuActive();
 extern void drawMenu();
+
+// Forward declare ACK functions from radio.h
+extern uint32_t getTotalPacketsSent();
+extern uint32_t getAcksReceived();
+extern uint32_t getFailedAcks();
 
 // Display object
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
@@ -94,14 +99,41 @@ void drawMainDisplay() {
   // === YELLOW AREA (0-15 pixels) ===
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.print("RC TX - ");
-  display.print(isRadioOK() ? "ONLINE" : "OFFLINE");
   
-  // Armed status and packet counter
+  // First row: RC TX status and armed status
+  display.print("TX:");
+  display.print(isRadioOK() ? "ON" : "OFF");
+  display.print("|");
+  
+  // Armed status with special formatting
+  if (getArmedStatus()) {
+    // ARMED: White background, black text
+    int armedTextWidth = 5 * 6; // "ARMED" = 5 characters * 6 pixels each
+    int armedTextX = display.getCursorX();
+    int armedTextY = display.getCursorY();
+    
+    // Draw white background rectangle
+    display.fillRect(armedTextX, armedTextY, armedTextWidth, 8, SSD1306_WHITE);
+    
+    // Set text color to black and draw "ARMED"
+    display.setTextColor(SSD1306_BLACK);
+    display.setCursor(armedTextX, armedTextY);
+    display.print("ARMED");
+    
+    // Reset text color to white for rest of display
+    display.setTextColor(SSD1306_WHITE);
+  } else {
+    display.print("DISARM");
+  }
+  
+  // Second row: Packet statistics with ACK tracking
   display.setCursor(0, 8);
-  display.print(getArmedStatus() ? "ARMED" : "DISARMED");
-  display.print(" PKT:");
-  display.print(data.counter);
+  display.print("P:");
+  display.print(getTotalPacketsSent());
+  display.print("|A:");
+  display.print(getAcksReceived());
+  display.print("|F:");
+  display.print(getFailedAcks());
   
   // === BLUE AREA (16-63 pixels) ===
   
@@ -192,6 +224,7 @@ void displayReady() {
   display.println("Current Config:");
   display.println("Right Joy X = Steer");
   display.println("Left Joy Y = Throttle");
+  display.println("ACK System: ENABLED");
   display.display();
   delay(2000); // Show for 2 seconds
 }
