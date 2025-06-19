@@ -28,6 +28,8 @@
 #include "controls.h"
 #include "menu.h"
 #include "radio_test.h" // Added for radio testing
+#include "audio.h"
+
 
 // Global variables
 RCData data;
@@ -51,24 +53,47 @@ void setup() {
   // Initialize all modules in order
   Serial.println("1. Initializing Display...");
   initDisplay();
-  
+
   Serial.println("2. Initializing Controls...");
   initControls();
-  
+
   Serial.println("3. Initializing Radio...");
   initRadio();
-  
+
   Serial.println("4. Initializing Menu System...");
   initMenu();
-  
+
+  Serial.println("5. Initializing Audio System...");
+  initAudio();
+
   // Initialize data structure
   data.throttle = 0;
   data.steering = 0;
   data.counter = 0;
-  
+
   // Show ready screen with menu instructions
   displayReady();
-  
+
+  // NOW play audio - after audio system is initialized
+  delay(500);  // Short delay to let display settle
+  playBootMusic();
+
+  // Wait for boot music to finish WITH audio updates
+  unsigned long bootMusicStart = millis();
+  while (millis() - bootMusicStart < 2000) {
+    updateAudio();  // Keep updating audio during the wait
+    delay(10);      // Small delay to prevent busy waiting
+  }
+
+  playSystemReady();
+
+  // Wait for system ready sound to finish
+  unsigned long systemReadyStart = millis();
+  while (millis() - systemReadyStart < 1000) {
+    updateAudio();  // Keep updating audio during the wait
+    delay(10);      // Small delay to prevent busy waiting
+  }
+    
   // Apply LED settings after everything is initialized
   extern void applyLEDSettings();
   applyLEDSettings();
@@ -84,7 +109,7 @@ void setup() {
 void loop() {
   // Update menu system first (handles OK button long press and factory reset)
   updateMenu();
-  
+  updateAudio();
   // Read controls (includes calibrated joystick values)
   readJoysticks();
   

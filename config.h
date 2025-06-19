@@ -1,5 +1,5 @@
 /*
-  Enhanced config.h - Data Structure with Range Settings
+  Enhanced config.h - Data Structure with Range Settings and Audio System
   RC Transmitter for Teensy 4.0
 */
 
@@ -14,7 +14,7 @@ struct RCData {
   int16_t steering;           // -1000 to +1000
   uint32_t counter;           // Packet counter
   
-  // NEW: Range configuration data
+  // Range configuration data
   int16_t throttle_min_pwm;     // Minimum throttle PWM (1000-2000)
   int16_t throttle_max_pwm;     // Maximum throttle PWM (1000-2000)
   int16_t steer_min_degree;     // Minimum steering angle (-90 to +90)
@@ -54,6 +54,9 @@ extern RCData data;
 
 #define RADIO_CE   9
 #define RADIO_CSN  10
+
+// NEW: Audio system pin
+#define SPEAKER_PIN 23  // Piezo speaker for audio feedback
 
 // Pin definitions - Display (I2C)
 // Teensy 4.0 I2C pins
@@ -111,6 +114,14 @@ struct FactoryDefaults {
   int steerMinDegree = -65;
   int steerNeutralDegree = 0;
   int steerMaxDegree = 40;
+  
+  // NEW: Audio settings defaults
+  bool audioEnabled = true;
+  int audioVolume = 75;
+  bool systemSounds = true;
+  bool navigationSounds = true;
+  bool alertSounds = true;
+  bool musicEnabled = true;
   
   // Calibration defaults
   int rightJoyX_min = 0, rightJoyX_neutral = 512, rightJoyX_max = 1023;

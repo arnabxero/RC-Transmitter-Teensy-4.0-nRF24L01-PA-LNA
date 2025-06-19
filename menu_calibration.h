@@ -85,6 +85,8 @@ void updateMenuCalibration() {
   // Check for OK button press (rising edge detection) - ORIGINAL FUNCTIONALITY
   if (currentOKState && !lastOKState) {
     Serial.println("OK pressed during calibration");
+    playCalibrationStepSound();  // ADD THIS LINE
+
     
     if (currentCalType == "JOYSTICK") {
       int rawValue = 0;
@@ -177,6 +179,8 @@ void startCalibration(String calType, String axis) {
     Serial.print(axis);
   }
   Serial.println();
+  playCalibrationStartSound();  // ADD THIS LINE
+
   
   calibrationActive = true;
   currentCalType = calType;
@@ -201,6 +205,7 @@ void completeCalibration() {
   Serial.println();
   
   saveCalibration();
+  playCalibrationCompleteSound();  // ADD THIS LINE
   calibrationActive = false;
   
   // Return to appropriate menu

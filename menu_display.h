@@ -1,5 +1,5 @@
 /*
-  menu_display.h - Enhanced Display Functions with Range Settings and Factory Reset
+  menu_display.h - Enhanced Display Functions with Range Settings, Factory Reset, and Audio Settings
   RC Transmitter for Teensy 4.0 (MPU6500 Removed)
 */
 
@@ -38,14 +38,15 @@ void drawMainMenus() {
         {"Calibration", true, true},
         {"Settings", true, true},
         {"Range Settings", true, true},
+        {"Audio Settings", true, true},    // NEW: Audio Settings menu item
         {"System Info", true, true},
         {"Radio Test", true, false},
         {"Display Test", true, false},
-        {"Input Test", true, false},     // ADD THIS LINE (Comprehensive input test)
-        {"Factory Reset", true, true},  // Changed to hasSubmenu = true
+        {"Input Test", true, false},
+        {"Factory Reset", true, true},
         {"Exit", true, false}
       };
-      drawScrollableMenu(items, 9, "RC TX MENU");  // Changed from 8 to 9
+      drawScrollableMenu(items, 10, "RC TX MENU");  // Changed from 9 to 10
       break;
     }
     
@@ -111,6 +112,23 @@ void drawMainMenus() {
       break;
     }
     
+    // NEW: Audio Settings Menu
+    case MENU_AUDIO_SETTINGS: {
+      MenuItem items[] = {
+        {"Audio Enable: " + String(settings.audioEnabled ? "ON" : "OFF"), true, false},
+        {"Volume: " + String(settings.audioVolume) + "%", true, false},
+        {"System Sounds: " + String(settings.systemSounds ? "ON" : "OFF"), true, false},
+        {"Navigation: " + String(settings.navigationSounds ? "ON" : "OFF"), true, false},
+        {"Alert Sounds: " + String(settings.alertSounds ? "ON" : "OFF"), true, false},
+        {"Music Enable: " + String(settings.musicEnabled ? "ON" : "OFF"), true, false},
+        {"Test Sound", true, false},
+        {"Reset Audio", true, false},
+        {"Back", true, false}
+      };
+      drawScrollableMenu(items, 9, "Audio Settings");
+      break;
+    }
+    
     case MENU_LED_SETTINGS: {
       MenuItem items[] = {
         {"LED Enable: " + String(settings.ledEnabled ? "ON" : "OFF"), true, false},
@@ -138,12 +156,13 @@ void drawMainMenus() {
     
     case MENU_INFO: {
       MenuItem items[] = {
-        {"Firmware v3.1", false, false},
+        {"Firmware v3.2", false, false},  // Updated version number
         {"Free Memory: " + String(freeMemory()), false, false},
         {"Range Config: Active", false, false},
+        {"Audio System: Active", false, false},  // NEW: Audio system info
         {"Back", true, false}
       };
-      drawScrollableMenu(items, 4, "System Info");
+      drawScrollableMenu(items, 5, "System Info");  // Changed from 4 to 5
       break;
     }
     

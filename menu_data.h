@@ -1,5 +1,5 @@
 /*
-  menu_data.h - Enhanced Data Structures with Range Settings and Factory Reset
+  menu_data.h - Enhanced Data Structures with Range Settings, Factory Reset, and Audio Settings
   RC Transmitter for Teensy 4.0
 */
 
@@ -9,7 +9,7 @@
 #include <EEPROM.h>
 #include "config.h"
 
-// Menu states (enhanced with range settings, MPU6500 removed, factory reset added)
+// Menu states (enhanced with audio settings)
 enum MenuState {
   MENU_HIDDEN,
   MENU_MAIN,
@@ -32,6 +32,8 @@ enum MenuState {
   MENU_STEER_MIN_SETTING,        // Steering minimum degrees
   MENU_STEER_NEUTRAL_SETTING,    // Steering neutral/center degrees
   MENU_STEER_MAX_SETTING,        // Steering maximum degrees
+  MENU_AUDIO_SETTINGS,           // NEW: Audio settings menu
+  MENU_AUDIO_VOLUME_SETTING,     // NEW: Audio volume setting
   MENU_INFO,
   MENU_CAL_IN_PROGRESS,
   MENU_CANCEL_CONFIRM,
@@ -68,7 +70,7 @@ struct MenuItem {
   bool hasSubmenu;
 };
 
-// Enhanced settings data structure
+// Enhanced settings data structure with audio settings
 struct SettingsData {
   // Joystick settings
   int joystickDeadzone;  // 0-200
@@ -93,12 +95,20 @@ struct SettingsData {
   int failsafeSteering;       // -1000 to 1000
   bool failsafeEnabled;
   
-  // NEW: Range settings
+  // Range settings
   int throttleMinPWM;         // 1000-2000 microseconds
   int throttleMaxPWM;         // 1000-2000 microseconds
   int steerMinDegree;         // -90 to +90 degrees
   int steerNeutralDegree;     // -90 to +90 degrees (center position)
   int steerMaxDegree;         // -90 to +90 degrees
+  
+  // NEW: Audio settings
+  bool audioEnabled;          // Master audio enable/disable
+  int audioVolume;            // 0-100 volume level
+  bool systemSounds;          // Arm/disarm, boot, etc.
+  bool navigationSounds;      // Menu navigation sounds
+  bool alertSounds;           // Error, battery low, radio lost
+  bool musicEnabled;          // Boot music and melodies
   
   // EEPROM signature
   uint16_t signature;
@@ -154,6 +164,7 @@ void loadCalibration();
 void resetCalibration();
 void applyLEDSettings();
 void applyDisplayBrightness();
+void applyAudioSettings();  // NEW: Apply audio settings
 void updateDataPacketRanges();
 int getCurrentDeadzone();
 String getCalibrationStatus(String axis);
@@ -179,6 +190,10 @@ extern void setLED(bool red, bool green, bool blue);
 extern bool menuActive;
 extern Adafruit_SSD1306 display;
 
+// NEW: Forward declarations for audio functions
+extern void setAudioEnabled(bool enabled);
+extern void setAudioVolume(int volume);
+
 void initMenuData() {
   Serial.println("Loading data from EEPROM...");
   
@@ -189,6 +204,7 @@ void initMenuData() {
   loadSettings();
   applyDisplayBrightness();
   applyLEDSettings();
+  applyAudioSettings();  // NEW: Apply audio settings
   updateDataPacketRanges();  // Initialize data packet with current ranges
 }
 
@@ -204,6 +220,7 @@ void saveSettings() {
   // Apply settings immediately after saving
   applyLEDSettings();
   applyDisplayBrightness();
+  applyAudioSettings();  // NEW: Apply audio settings
   updateDataPacketRanges();  // Update data packet when settings change
 }
 
@@ -247,7 +264,38 @@ void resetSettings() {
   settings.steerNeutralDegree = 0;     // Proper center position
   settings.steerMaxDegree = 40;        // Tested optimal right
   
+  // NEW: Default audio settings
+  settings.audioEnabled = true;        // Audio enabled by default
+  settings.audioVolume = 75;           // 75% volume
+  settings.systemSounds = true;        // System sounds enabled
+  settings.navigationSounds = true;    // Navigation sounds enabled
+  settings.alertSounds = true;         // Alert sounds enabled
+  settings.musicEnabled = true;        // Music enabled
+  
   settings.signature = EEPROM_SIGNATURE;
+}
+
+// NEW: Apply audio settings function
+void applyAudioSettings() {
+  setAudioEnabled(settings.audioEnabled);
+  setAudioVolume(settings.audioVolume);
+  
+  // Update external audio settings structure
+  extern struct AudioSettings audioSettings;
+  audioSettings.enabled = settings.audioEnabled;
+  audioSettings.volume = settings.audioVolume;
+  audioSettings.systemSounds = settings.systemSounds;
+  audioSettings.navigationSounds = settings.navigationSounds;
+  audioSettings.alertSounds = settings.alertSounds;
+  audioSettings.musicEnabled = settings.musicEnabled;
+  
+  Serial.println("Audio settings applied:");
+  Serial.print("  Enabled: "); Serial.println(settings.audioEnabled ? "YES" : "NO");
+  Serial.print("  Volume: "); Serial.println(settings.audioVolume);
+  Serial.print("  System: "); Serial.println(settings.systemSounds ? "ON" : "OFF");
+  Serial.print("  Navigation: "); Serial.println(settings.navigationSounds ? "ON" : "OFF");
+  Serial.print("  Alerts: "); Serial.println(settings.alertSounds ? "ON" : "OFF");
+  Serial.print("  Music: "); Serial.println(settings.musicEnabled ? "ON" : "OFF");
 }
 
 // Function to update data packet with current range settings
@@ -471,6 +519,8 @@ int freeMemory() {
 // Factory reset functions
 void startFactoryReset() {
   Serial.println("Starting factory reset process...");
+  extern void playFactoryResetWarning();
+  playFactoryResetWarning();
   factoryResetActive = true;
   factoryResetStep = 0;
   factoryResetStartTime = millis();
@@ -544,6 +594,14 @@ void performFactoryReset() {
   settings.steerNeutralDegree = factoryDefaults.steerNeutralDegree;
   settings.steerMaxDegree = factoryDefaults.steerMaxDegree;
   
+  // NEW: Reset audio settings to defaults
+  settings.audioEnabled = true;
+  settings.audioVolume = 75;
+  settings.systemSounds = true;
+  settings.navigationSounds = true;
+  settings.alertSounds = true;
+  settings.musicEnabled = true;
+  
   settings.signature = EEPROM_SIGNATURE;
   
   // Apply factory defaults to calibration
@@ -583,7 +641,11 @@ void performFactoryReset() {
   // Apply settings immediately
   applyLEDSettings();
   applyDisplayBrightness();
+  applyAudioSettings();  // NEW: Apply audio settings
   updateDataPacketRanges();
+  
+  extern void playSuccessSound();
+  playSuccessSound();
   
   Serial.println("Factory reset data applied and saved to EEPROM");
 }

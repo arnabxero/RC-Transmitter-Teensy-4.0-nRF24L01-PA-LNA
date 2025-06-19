@@ -7,6 +7,7 @@
 #define CONTROLS_H
 
 #include "config.h"
+#include "audio.h"
 
 // Forward declare calibration functions
 extern int getCalibratedSteering();
@@ -117,6 +118,7 @@ void checkButtons() {
     // Trigger just pressed - ARM the system
     isArmed = true;
     Serial.println("SYSTEM ARMED!");
+    playArmSound();
     // Use applyLEDSettings() instead of direct setLED() call
     extern void applyLEDSettings();
     applyLEDSettings();
@@ -124,6 +126,7 @@ void checkButtons() {
     // Trigger just released - DISARM the system
     isArmed = false;
     Serial.println("SYSTEM DISARMED!");
+    playDisarmSound();
     // Use applyLEDSettings() instead of direct setLED() call
     extern void applyLEDSettings();
     applyLEDSettings();

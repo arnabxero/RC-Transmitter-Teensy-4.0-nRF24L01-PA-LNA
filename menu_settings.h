@@ -1,6 +1,6 @@
 /*
-  menu_settings.h - Enhanced Settings Management with Range Settings
-  RC Transmitter for Arduino Mega
+  menu_settings.h - Enhanced Settings Management with Range Settings and Audio Settings
+  RC Transmitter for Teensy 4.0
 */
 
 #ifndef MENU_SETTINGS_H
@@ -65,13 +65,16 @@ void exitMenuSettings();
 void goBackSettings();
 void handleLEDSettingsSelection(int selection);
 void handleFailsafeSettingsSelection(int selection);
-void handleRangeSettingsSelection(int selection);  // NEW: Range settings handler
+void handleRangeSettingsSelection(int selection);
+void handleAudioSettingsSelection(int selection);  // NEW: Audio settings handler
 void resetAllSettings();
-void resetRangeSettings();  // NEW: Reset only range settings
+void resetRangeSettings();
+void resetAudioSettings();  // NEW: Reset audio settings
 void drawMenuSettings();
 void drawSettingScreen();
 void drawFailsafeSettingScreen();
-void drawRangeSettingScreen();  // NEW: Range setting screen
+void drawRangeSettingScreen();
+void drawAudioSettingScreen();  // NEW: Audio setting screen
 void drawKeyboardScreen();
 void drawSettingSaveScreen();
 bool isSettingActive();
@@ -151,7 +154,6 @@ void initMenuSettings() {
 }
 
 void updateMenuSettings() {
-  Serial.println("---------------Updating menu settings...");
   // Check if we're in the lockout period after completing a setting
   if (settingJustCompleted) {
     if (millis() - settingCompletionTime > SETTING_LOCKOUT_PERIOD) {
@@ -267,7 +269,7 @@ void handleSettingNavigation() {
         settings.failsafeSteering = max(-1000, settings.failsafeSteering - (rapidChangeActive ? 50 : 10));
       }
     }
-    // NEW: Range settings navigation
+    // Range settings navigation
     else if (currentMenu == MENU_THROTTLE_MIN_SETTING) {
       if (navDirection == 2 || navDirection == 1) { // Right or Down - increase
         settings.throttleMinPWM = min(settings.throttleMaxPWM - 50, settings.throttleMinPWM + (rapidChangeActive ? 50 : 10));
@@ -297,6 +299,16 @@ void handleSettingNavigation() {
         settings.steerMaxDegree = min(90, settings.steerMaxDegree + (rapidChangeActive ? 10 : 5));
       } else if (navDirection == -2 || navDirection == -1) { // Left or Up - decrease
         settings.steerMaxDegree = max(settings.steerNeutralDegree + 5, settings.steerMaxDegree - (rapidChangeActive ? 10 : 5));
+      }
+    }
+    // NEW: Audio volume setting navigation
+    else if (currentMenu == MENU_AUDIO_VOLUME_SETTING) {
+      if (navDirection == 2 || navDirection == 1) { // Right or Down - increase
+        settings.audioVolume = min(100, settings.audioVolume + (rapidChangeActive ? 10 : 5));
+        applyAudioSettings();  // Apply immediately to hear the volume change
+      } else if (navDirection == -2 || navDirection == -1) { // Left or Up - decrease
+        settings.audioVolume = max(0, settings.audioVolume - (rapidChangeActive ? 10 : 5));
+        applyAudioSettings();  // Apply immediately to hear the volume change
       }
     }
     
@@ -381,7 +393,7 @@ void startSetting(String settingType) {
   } else if (settingType == "FAILSAFE_STEERING") {
     currentMenu = MENU_FAILSAFE_STEERING_SETTING;
   }
-  // NEW: Range settings
+  // Range settings
   else if (settingType == "THROTTLE_MIN") {
     currentMenu = MENU_THROTTLE_MIN_SETTING;
   } else if (settingType == "THROTTLE_MAX") {
@@ -392,6 +404,10 @@ void startSetting(String settingType) {
     currentMenu = MENU_STEER_NEUTRAL_SETTING;
   } else if (settingType == "STEER_MAX") {
     currentMenu = MENU_STEER_MAX_SETTING;
+  }
+  // NEW: Audio settings
+  else if (settingType == "AUDIO_VOLUME") {
+    currentMenu = MENU_AUDIO_VOLUME_SETTING;
   }
 }
 
@@ -411,6 +427,8 @@ void completeSetting() {
   }
   
   saveSettings();  // ONLY save when completing via OK button
+  extern void playSaveSound();
+  playSaveSound();
   settingActive = false;
   rapidChangeActive = false;
   
@@ -421,9 +439,13 @@ void completeSetting() {
   } else if (currentMenu == MENU_THROTTLE_MIN_SETTING || currentMenu == MENU_THROTTLE_MAX_SETTING || 
              currentMenu == MENU_STEER_MIN_SETTING || currentMenu == MENU_STEER_NEUTRAL_SETTING || 
              currentMenu == MENU_STEER_MAX_SETTING) {
-    // NEW: Return to Range Settings menu
+    // Return to Range Settings menu
     currentMenu = MENU_RANGE_SETTINGS;
-    maxMenuItems = 7;  // Changed from 6 to 7
+    maxMenuItems = 7;
+  } else if (currentMenu == MENU_AUDIO_VOLUME_SETTING) {
+    // NEW: Return to Audio Settings menu
+    currentMenu = MENU_AUDIO_SETTINGS;
+    maxMenuItems = 9;
   } else {
     currentMenu = MENU_SETTINGS;
     maxMenuItems = 8;
@@ -454,6 +476,7 @@ void cancelSetting() {
   loadSettings();
   applyLEDSettings();     // Restore LED state
   applyDisplayBrightness(); // Restore display brightness
+  applyAudioSettings();   // NEW: Restore audio settings
   
   settingActive = false;
   keyboardActive = false;
@@ -467,9 +490,13 @@ void cancelSetting() {
   } else if (currentMenu == MENU_THROTTLE_MIN_SETTING || currentMenu == MENU_THROTTLE_MAX_SETTING || 
              currentMenu == MENU_STEER_MIN_SETTING || currentMenu == MENU_STEER_NEUTRAL_SETTING || 
              currentMenu == MENU_STEER_MAX_SETTING) {
-    // NEW: Return to Range Settings menu
+    // Return to Range Settings menu
     currentMenu = MENU_RANGE_SETTINGS;
-    maxMenuItems = 7;  // Changed from 6 to 7
+    maxMenuItems = 7;
+  } else if (currentMenu == MENU_AUDIO_VOLUME_SETTING) {
+    // NEW: Return to Audio Settings menu
+    currentMenu = MENU_AUDIO_SETTINGS;
+    maxMenuItems = 9;
   } else {
     currentMenu = MENU_SETTINGS;
     maxMenuItems = 8;
@@ -531,7 +558,6 @@ void handleFailsafeSettingsSelection(int selection) {
   }
 }
 
-// NEW: Range settings selection handler
 void handleRangeSettingsSelection(int selection) {
   switch (selection) {
     case 0: startSetting("THROTTLE_MIN"); return;
@@ -543,6 +569,59 @@ void handleRangeSettingsSelection(int selection) {
   }
 }
 
+// NEW: Audio settings selection handler
+void handleAudioSettingsSelection(int selection) {
+  extern void playTestSound();
+  
+  switch (selection) {
+    case 0: // Toggle audio enabled
+      settings.audioEnabled = !settings.audioEnabled;
+      applyAudioSettings();
+      saveSettings();
+      Serial.print("Audio enabled toggled to: ");
+      Serial.println(settings.audioEnabled ? "ON" : "OFF");
+      break;
+    case 1: // Volume setting
+      startSetting("AUDIO_VOLUME");
+      return;
+    case 2: // Toggle system sounds
+      settings.systemSounds = !settings.systemSounds;
+      applyAudioSettings();
+      saveSettings();
+      Serial.print("System sounds toggled to: ");
+      Serial.println(settings.systemSounds ? "ON" : "OFF");
+      break;
+    case 3: // Toggle navigation sounds
+      settings.navigationSounds = !settings.navigationSounds;
+      applyAudioSettings();
+      saveSettings();
+      Serial.print("Navigation sounds toggled to: ");
+      Serial.println(settings.navigationSounds ? "ON" : "OFF");
+      break;
+    case 4: // Toggle alert sounds
+      settings.alertSounds = !settings.alertSounds;
+      applyAudioSettings();
+      saveSettings();
+      Serial.print("Alert sounds toggled to: ");
+      Serial.println(settings.alertSounds ? "ON" : "OFF");
+      break;
+    case 5: // Toggle music enabled
+      settings.musicEnabled = !settings.musicEnabled;
+      applyAudioSettings();
+      saveSettings();
+      Serial.print("Music enabled toggled to: ");
+      Serial.println(settings.musicEnabled ? "ON" : "OFF");
+      break;
+    case 6: // Test sound
+      playTestSound();
+      Serial.println("Playing test sound");
+      break;
+    case 7: // Reset audio settings
+      resetAudioSettings();
+      break;
+  }
+}
+
 void resetAllSettings() {
   resetSettings();
   resetCalibration();
@@ -550,10 +629,10 @@ void resetAllSettings() {
   saveCalibration();
   applyLEDSettings();
   applyDisplayBrightness();
+  applyAudioSettings();  // NEW: Apply audio settings
   Serial.println("All settings reset to defaults");
 }
 
-// NEW: Reset only range settings
 void resetRangeSettings() {
   settings.throttleMinPWM = 1100;      // Conservative minimum
   settings.throttleMaxPWM = 1900;      // Conservative maximum
@@ -562,6 +641,19 @@ void resetRangeSettings() {
   settings.steerMaxDegree = 40;        // Your tested optimal right
   saveSettings();
   Serial.println("Range settings reset to defaults");
+}
+
+// NEW: Reset audio settings to defaults
+void resetAudioSettings() {
+  settings.audioEnabled = true;
+  settings.audioVolume = 75;
+  settings.systemSounds = true;
+  settings.navigationSounds = true;
+  settings.alertSounds = true;
+  settings.musicEnabled = true;
+  applyAudioSettings();
+  saveSettings();
+  Serial.println("Audio settings reset to defaults");
 }
 
 bool isSettingActive() {
@@ -586,8 +678,10 @@ void drawMenuSettings() {
   } else if (currentMenu == MENU_THROTTLE_MIN_SETTING || currentMenu == MENU_THROTTLE_MAX_SETTING || 
              currentMenu == MENU_STEER_MIN_SETTING || currentMenu == MENU_STEER_NEUTRAL_SETTING || 
              currentMenu == MENU_STEER_MAX_SETTING) {
-    // NEW: Draw range setting screen
     drawRangeSettingScreen();
+  } else if (currentMenu == MENU_AUDIO_VOLUME_SETTING) {
+    // NEW: Draw audio setting screen
+    drawAudioSettingScreen();
   } else {
     drawSettingScreen();
   }
@@ -683,7 +777,46 @@ void drawSettingScreen() {
   }
 }
 
-// NEW: Draw range setting screen
+// NEW: Draw audio setting screen
+void drawAudioSettingScreen() {
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  
+  if (currentMenu == MENU_AUDIO_VOLUME_SETTING) {
+    display.println("Audio Volume");
+    display.setCursor(0, 16);
+    display.print("Volume: ");
+    display.print(settings.audioVolume);
+    display.println("%");
+    
+    // Draw volume bar
+    int barWidth = map(settings.audioVolume, 0, 100, 0, 100);
+    display.drawRect(10, 28, 102, 8, SSD1306_WHITE);
+    display.fillRect(11, 29, barWidth, 6, SSD1306_WHITE);
+    
+    // Volume level indicators
+    display.setCursor(0, 40);
+    if (settings.audioVolume == 0) {
+      display.println("MUTED");
+    } else if (settings.audioVolume < 25) {
+      display.println("Very Quiet");
+    } else if (settings.audioVolume < 50) {
+      display.println("Quiet");
+    } else if (settings.audioVolume < 75) {
+      display.println("Medium");
+    } else if (settings.audioVolume < 90) {
+      display.println("Loud");
+    } else {
+      display.println("Very Loud");
+    }
+    
+    // Instructions
+    display.setCursor(0, 52);
+    display.print("Arrows: Adjust, OK: Save");
+  }
+}
+
+// Draw range setting screen
 void drawRangeSettingScreen() {
   display.setTextSize(1);
   display.setCursor(0, 0);

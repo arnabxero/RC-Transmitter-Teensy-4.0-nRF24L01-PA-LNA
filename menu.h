@@ -1,5 +1,5 @@
 /*
-  menu.h - Enhanced Core Menu System with Range Settings and Factory Reset
+  menu.h - Enhanced Core Menu System with Range Settings, Factory Reset, and Audio Settings
   RC Transmitter for Teensy 4.0 (MPU6500 Removed)
 */
 
@@ -15,8 +15,6 @@
 #include "menu_calibration.h"
 #include "display_test.h"
 #include "test_buttons.h"
-
-
 
 // Menu navigation variables - declare extern where used in other files
 MenuState currentMenu = MENU_HIDDEN;
@@ -63,7 +61,7 @@ void initMenu() {
   initMenuSettings();
   initMenuCalibration();
   
-  Serial.println("Enhanced menu system initialized with Range Settings and Factory Reset!");
+  Serial.println("Enhanced menu system initialized with Range Settings, Audio Settings, and Factory Reset!");
 }
 
 void updateMenu() {
@@ -85,7 +83,6 @@ void updateMenu() {
     return;
   }
     
-  
   // Handle cancel confirmation first
   if (cancelConfirmActive) {
     handleCancelConfirmation();
@@ -160,6 +157,8 @@ void handleMenuNavigation() {
     menuTimer = millis();
     
     if (navDirection == 1) { // Down
+      extern void playNavigationDownSound();
+      playNavigationDownSound();
       menuSelection++;
       if (menuSelection >= maxMenuItems) {
         menuSelection = 0;
@@ -168,6 +167,8 @@ void handleMenuNavigation() {
         menuOffset++;
       }
     } else if (navDirection == -1) { // Up
+      extern void playNavigationUpSound();
+      playNavigationUpSound();
       menuSelection--;
       if (menuSelection < 0) {
         menuSelection = maxMenuItems - 1;
@@ -177,9 +178,13 @@ void handleMenuNavigation() {
       }
     } else if (navDirection == 2) { // Right/Select
       if (!isInSettingLockout()) {
+        extern void playSelectSound();
+        playSelectSound();
         selectMenuItem();
       }
     } else if (navDirection == -2) { // Left/Back
+      extern void playBackSound();
+      playBackSound();
       goBack();
     }
     
@@ -233,8 +238,10 @@ int getNavigationDirection() {
 
 void enterMenu() {
   Serial.println("Entering enhanced menu...");
+  extern void playMenuEnterSound();
+  playMenuEnterSound();
   currentMenu = MENU_MAIN;
-  maxMenuItems = 9;  // Changed from 8 to 9
+  maxMenuItems = 10;  // Updated from 9 to 10 to include Audio Settings
   menuSelection = 0;
   menuOffset = 0;
   menuTimer = millis();
@@ -244,6 +251,8 @@ void enterMenu() {
 
 void exitMenu() {
   Serial.println("Exiting menu...");
+  extern void playMenuExitSound();
+  playMenuExitSound();
   currentMenu = MENU_HIDDEN;
   menuActive = false;
   exitMenuCalibration();
@@ -266,42 +275,46 @@ void goBack() {
       break;
     case MENU_CALIBRATION:
       currentMenu = MENU_MAIN;
-      maxMenuItems = 8;
+      maxMenuItems = 10;  // Updated to 10
       break;
     case MENU_SETTINGS:
       currentMenu = MENU_MAIN;
-      maxMenuItems = 8;
+      maxMenuItems = 10;  // Updated to 10
       break;
     case MENU_RANGE_SETTINGS:
       currentMenu = MENU_MAIN;
-      maxMenuItems = 8;
+      maxMenuItems = 10;  // Updated to 10
+      break;
+    case MENU_AUDIO_SETTINGS:  // NEW: Audio settings back navigation
+      currentMenu = MENU_MAIN;
+      maxMenuItems = 10;  // Updated to 10
       break;
     case MENU_DISPLAY_TEST:
       // Reset display test state and go back to main menu
       resetDisplayTest();
       currentMenu = MENU_MAIN;
-      maxMenuItems = 8;
+      maxMenuItems = 10;  // Updated to 10
       break;
     case MENU_BUTTON_TEST:
       // Reset input test state and go back to main menu
       resetButtonTest();
       currentMenu = MENU_MAIN;
-      maxMenuItems = 9;  // Changed from 8 to 9 to include input test
+      maxMenuItems = 10;  // Updated to 10
       break;
     case MENU_INFO:
       currentMenu = MENU_MAIN;
-      maxMenuItems = 8;
+      maxMenuItems = 10;  // Updated to 10
       break;
     case MENU_RADIO_TEST:
       // Reset radio test state and go back to main menu
       extern void resetRadioTest();
       resetRadioTest();
       currentMenu = MENU_MAIN;
-      maxMenuItems = 8;
+      maxMenuItems = 10;  // Updated to 10
       break;
     case MENU_FACTORY_RESET_CONFIRM:
       currentMenu = MENU_MAIN;
-      maxMenuItems = 8;
+      maxMenuItems = 10;  // Updated to 10
       break;
     case MENU_FACTORY_RESET_FINAL:
       currentMenu = MENU_FACTORY_RESET_CONFIRM;
@@ -325,7 +338,7 @@ void goBack() {
         goBackCalibration();
       } else {
         currentMenu = MENU_MAIN;
-        maxMenuItems = 8;
+        maxMenuItems = 10;  // Updated to 10
       }
       break;
   }
@@ -355,29 +368,33 @@ void selectMenuItem() {
           currentMenu = MENU_RANGE_SETTINGS;
           maxMenuItems = 7;
           break;
-        case 3: // System Info
-          currentMenu = MENU_INFO;
-          maxMenuItems = 4;
+        case 3: // NEW: Audio Settings
+          currentMenu = MENU_AUDIO_SETTINGS;
+          maxMenuItems = 9;
           break;
-        case 4: // Radio Test
+        case 4: // System Info (moved from 3)
+          currentMenu = MENU_INFO;
+          maxMenuItems = 5;  // Updated to 5 to include audio system info
+          break;
+        case 5: // Radio Test (moved from 4)
           // Start radio test and show results
           extern void startRadioTest();
           startRadioTest();
           currentMenu = MENU_RADIO_TEST;
           break;
-        case 5: // Display Test
+        case 6: // Display Test (moved from 5)
           startDisplayTest();
           currentMenu = MENU_DISPLAY_TEST;
           break;
-        case 6: // Input Test - NEW! (includes joysticks, pots, buttons, switches)
+        case 7: // Input Test (moved from 6)
           startButtonTest();
           currentMenu = MENU_BUTTON_TEST;
           break;
-        case 7: // Factory Reset
+        case 8: // Factory Reset (moved from 7)
           currentMenu = MENU_FACTORY_RESET_CONFIRM;
           maxMenuItems = 2;
           break;
-        case 8: // Exit
+        case 9: // Exit (moved from 8)
           exitMenu();
           return;
       }
@@ -440,6 +457,12 @@ void selectMenuItem() {
     case MENU_RANGE_SETTINGS:
       handleRangeSettingsSelection(menuSelection);
       if (menuSelection == 6) goBack(); // Back option
+      return;
+      
+    // NEW: Audio Settings Menu
+    case MENU_AUDIO_SETTINGS:
+      handleAudioSettingsSelection(menuSelection);
+      if (menuSelection == 8) goBack(); // Back option
       return;
       
     case MENU_LED_SETTINGS:

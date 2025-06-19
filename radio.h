@@ -61,6 +61,8 @@ void initRadio() {
     radio.stopListening(); // Transmitter mode
     
     Serial.println("SUCCESS!");
+    playSuccessSound();  // ADD THIS LINE
+
     Serial.println("ACK system enabled for reliability tracking");
     
     // Reset ACK counters
@@ -73,6 +75,8 @@ void initRadio() {
     applyLEDSettings();
   } else {
     Serial.println("FAILED!");
+    playErrorSound();  // ADD THIS LINE
+
     setLED(true, false, false); // Red for error
     Serial.println("LED set to red due to radio failure");
   }
@@ -89,8 +93,15 @@ void transmitData() {
     acksReceived++;
   } else {
     failedAcks++;
+    // // Alert on sustained radio issues
+    // static int consecutiveFailures = 0;
+    // consecutiveFailures++;
+    // if (consecutiveFailures >= 20) {  // 10 consecutive failures
+    //   playRadioLostAlert();
+    //   consecutiveFailures = 0;  // Reset counter
+    // }
   }
-  
+
   // Check if we need to reset counters at 9999
   resetCountersIfNeeded();
   
