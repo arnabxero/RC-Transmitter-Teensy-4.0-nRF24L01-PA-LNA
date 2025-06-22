@@ -202,10 +202,18 @@ void initMenuData() {
   
   loadCalibration();
   loadSettings();
+  
+  // CRITICAL FIX: Apply audio settings IMMEDIATELY after loading from EEPROM
+  // This ensures audio system gets the correct enabled/disabled state before any sounds play
+  Serial.println("Applying EEPROM settings to audio system...");
+  applyAudioSettings();  // Apply audio settings FIRST
+  
   applyDisplayBrightness();
   applyLEDSettings();
-  applyAudioSettings();  // NEW: Apply audio settings
   updateDataPacketRanges();  // Initialize data packet with current ranges
+  
+  Serial.print("Audio loaded from EEPROM: ");
+  Serial.println(settings.audioEnabled ? "ENABLED" : "DISABLED");
 }
 
 void saveSettings() {
@@ -275,8 +283,14 @@ void resetSettings() {
   settings.signature = EEPROM_SIGNATURE;
 }
 
-// NEW: Apply audio settings function
+// NEW: Apply audio settings function - ENHANCED VERSION
 void applyAudioSettings() {
+  Serial.print("Applying audio settings - Enabled: ");
+  Serial.print(settings.audioEnabled ? "YES" : "NO");
+  Serial.print(", Volume: ");
+  Serial.println(settings.audioVolume);
+  
+  // Update the audio system functions
   setAudioEnabled(settings.audioEnabled);
   setAudioVolume(settings.audioVolume);
   
@@ -289,13 +303,20 @@ void applyAudioSettings() {
   audioSettings.alertSounds = settings.alertSounds;
   audioSettings.musicEnabled = settings.musicEnabled;
   
-  Serial.println("Audio settings applied:");
-  Serial.print("  Enabled: "); Serial.println(settings.audioEnabled ? "YES" : "NO");
-  Serial.print("  Volume: "); Serial.println(settings.audioVolume);
-  Serial.print("  System: "); Serial.println(settings.systemSounds ? "ON" : "OFF");
-  Serial.print("  Navigation: "); Serial.println(settings.navigationSounds ? "ON" : "OFF");
-  Serial.print("  Alerts: "); Serial.println(settings.alertSounds ? "ON" : "OFF");
-  Serial.print("  Music: "); Serial.println(settings.musicEnabled ? "ON" : "OFF");
+  // CRITICAL FIX: Stop any currently playing audio if audio was just disabled
+  if (!settings.audioEnabled) {
+    extern void stopAudio();
+    stopAudio();
+    Serial.println("Audio disabled - stopping all current playback");
+  }
+  
+  Serial.println("Complete audio settings applied:");
+  Serial.print("  Master Enable: "); Serial.println(audioSettings.enabled ? "YES" : "NO");
+  Serial.print("  Volume: "); Serial.println(audioSettings.volume);
+  Serial.print("  System Sounds: "); Serial.println(audioSettings.systemSounds ? "ON" : "OFF");
+  Serial.print("  Navigation: "); Serial.println(audioSettings.navigationSounds ? "ON" : "OFF");
+  Serial.print("  Alerts: "); Serial.println(audioSettings.alertSounds ? "ON" : "OFF");
+  Serial.print("  Music: "); Serial.println(audioSettings.musicEnabled ? "ON" : "OFF");
 }
 
 // Function to update data packet with current range settings

@@ -60,9 +60,13 @@ void setup() {
   Serial.println("3. Initializing Radio...");
   initRadio();
 
-  Serial.println("4. Initializing Menu System...");
+  // CRITICAL FIX: Initialize menu/data system BEFORE audio
+  Serial.println("4. Initializing Menu & Data System (Loading EEPROM)...");
   initMenu();
 
+  initMenuData(); // Load settings and calibration data from EEPROM
+
+  // CRITICAL FIX: Initialize audio AFTER EEPROM settings are loaded
   Serial.println("5. Initializing Audio System...");
   initAudio();
 
@@ -74,24 +78,33 @@ void setup() {
   // Show ready screen with menu instructions
   displayReady();
 
-  // NOW play audio - after audio system is initialized
-  delay(500);  // Short delay to let display settle
-  playBootMusic();
+  // CRITICAL FIX: Only play audio if it's enabled in EEPROM settings
+  extern SettingsData settings;
+  if (settings.audioEnabled && settings.musicEnabled) {
+    Serial.println("Audio enabled - playing boot sequence");
+    delay(500);  // Short delay to let display settle
+    playBootMusic();
 
-  // Wait for boot music to finish WITH audio updates
-  unsigned long bootMusicStart = millis();
-  while (millis() - bootMusicStart < 2000) {
-    updateAudio();  // Keep updating audio during the wait
-    delay(10);      // Small delay to prevent busy waiting
-  }
+    // Wait for boot music to finish WITH audio updates
+    unsigned long bootMusicStart = millis();
+    while (millis() - bootMusicStart < 2000) {
+      updateAudio();  // Keep updating audio during the wait
+      delay(10);      // Small delay to prevent busy waiting
+    }
 
-  playSystemReady();
+    if (settings.systemSounds) {
+      playSystemReady();
 
-  // Wait for system ready sound to finish
-  unsigned long systemReadyStart = millis();
-  while (millis() - systemReadyStart < 1000) {
-    updateAudio();  // Keep updating audio during the wait
-    delay(10);      // Small delay to prevent busy waiting
+      // Wait for system ready sound to finish
+      unsigned long systemReadyStart = millis();
+      while (millis() - systemReadyStart < 1000) {
+        updateAudio();  // Keep updating audio during the wait
+        delay(10);      // Small delay to prevent busy waiting
+      }
+    }
+  } else {
+    Serial.println("Audio disabled in EEPROM - skipping boot sounds");
+    delay(2000); // Still wait for display to be visible
   }
     
   // Apply LED settings after everything is initialized
@@ -103,6 +116,8 @@ void setup() {
   Serial.println("Hold OK button for 2 seconds to enter menu");
   Serial.println("Left trigger down = ARM system");
   Serial.println("Factory Reset available in main menu");
+  Serial.print("Audio Status: ");
+  Serial.println(settings.audioEnabled ? "ENABLED" : "DISABLED");
   Serial.println("=====================================");
 }
 

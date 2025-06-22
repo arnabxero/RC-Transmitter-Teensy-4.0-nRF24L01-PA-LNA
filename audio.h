@@ -82,8 +82,6 @@ const AudioNote bootSequence[] = {
   {NOTE_C4, 150}, {NOTE_E4, 150}, {NOTE_G4, 150}, {NOTE_C5, 200},
   {REST, 100}, {NOTE_G4, 100}, {NOTE_C5, 300}, {REST, 200},
   {NOTE_A4, 150}, {NOTE_C5, 150}, {NOTE_E5, 400}
-    //  {NOTE_C5, 200}, {REST, 50}, {NOTE_E5, 200}, {REST, 50}, {NOTE_G5, 400}
-
 };
 
 // System ready confirmation
@@ -245,19 +243,28 @@ void initAudio() {
   audioState.lastUpdateTime = 0;
   audioState.muted = false;
   
-  // Load settings (integrate with existing EEPROM system)
-  audioSettings.enabled = true;
-  audioSettings.volume = 75;
-  audioSettings.systemSounds = true;
-  audioSettings.navigationSounds = true;
-  audioSettings.alertSounds = true;
-  audioSettings.musicEnabled = true;
+  // CRITICAL FIX: DON'T TOUCH audioSettings AT ALL!
+  // The settings have already been loaded from EEPROM and applied
+  // Just initialize the hardware and state, not the settings
   
-  Serial.println("Audio system initialized successfully!");
+  Serial.println("Audio system hardware initialized!");
+  Serial.print("Current audio enabled state: ");
+  Serial.println(audioSettings.enabled ? "ENABLED" : "DISABLED");
 }
 
 void updateAudio() {
-  if (!audioSettings.enabled || audioState.muted) return;
+  // CRITICAL FIX: Check if audio is globally disabled first
+  if (!audioSettings.enabled || audioState.muted) {
+    // If audio is disabled and something is playing, stop it
+    if (audioState.isPlaying || audioState.sequencePlaying) {
+      noTone(SPEAKER_PIN);
+      audioState.isPlaying = false;
+      audioState.sequencePlaying = false;
+      audioState.currentSequence = nullptr;
+      audioState.sequenceIndex = 0;
+    }
+    return;
+  }
   
   unsigned long currentTime = millis();
   
@@ -305,7 +312,11 @@ void updateAudio() {
 }
 
 void playAudioSequence(const AudioNote* sequence, int length) {
-  if (!audioSettings.enabled || audioState.muted || !sequence || length <= 0) return;
+  // CRITICAL FIX: Check if audio is enabled before playing anything
+  if (!audioSettings.enabled || audioState.muted || !sequence || length <= 0) {
+    Serial.println("Audio playback blocked - disabled or muted");
+    return;
+  }
   
   // Stop any current audio
   stopAudio();
@@ -341,24 +352,32 @@ bool isAudioPlaying() {
 
 void setAudioEnabled(bool enabled) {
   audioSettings.enabled = enabled;
+  Serial.print("Audio globally set to: ");
+  Serial.println(enabled ? "ENABLED" : "DISABLED");
+  
   if (!enabled) {
     stopAudio();
+    Serial.println("Audio stopped due to disable");
   }
   // TODO: Save to EEPROM with existing settings system
 }
 
 void setAudioVolume(int volume) {
   audioSettings.volume = constrain(volume, 0, 100);
+  Serial.print("Audio volume set to: ");
+  Serial.println(audioSettings.volume);
   // TODO: Save to EEPROM with existing settings system
 }
 
 void muteAudio() {
   audioState.muted = true;
   stopAudio();
+  Serial.println("Audio muted");
 }
 
 void unmuteAudio() {
   audioState.muted = false;
+  Serial.println("Audio unmuted");
 }
 
 bool isAudioMuted() {
@@ -368,101 +387,123 @@ bool isAudioMuted() {
 // ================== SYSTEM EVENT FUNCTIONS ==================
 
 void playBootMusic() {
-  if (!audioSettings.musicEnabled) return;
+  if (!audioSettings.musicEnabled || !audioSettings.enabled) {
+    Serial.println("Boot music blocked - disabled");
+    return;
+  }
+  Serial.println("Playing boot music");
   playAudioSequence(bootSequence, sizeof(bootSequence) / sizeof(AudioNote));
 }
 
 void playSystemReady() {
-  if (!audioSettings.systemSounds) return;
+  if (!audioSettings.systemSounds || !audioSettings.enabled) {
+    Serial.println("System ready sound blocked - disabled");
+    return;
+  }
+  Serial.println("Playing system ready sound");
   playAudioSequence(systemReadySequence, sizeof(systemReadySequence) / sizeof(AudioNote));
 }
 
 void playArmSound() {
-  if (!audioSettings.systemSounds) return;
+  if (!audioSettings.systemSounds || !audioSettings.enabled) {
+    Serial.println("Arm sound blocked - disabled");
+    return;
+  }
+  Serial.println("Playing arm sound");
   playAudioSequence(armSequence, sizeof(armSequence) / sizeof(AudioNote));
 }
 
 void playDisarmSound() {
-  if (!audioSettings.systemSounds) return;
+  if (!audioSettings.systemSounds || !audioSettings.enabled) {
+    Serial.println("Disarm sound blocked - disabled");
+    return;
+  }
+  Serial.println("Playing disarm sound");
   playAudioSequence(disarmSequence, sizeof(disarmSequence) / sizeof(AudioNote));
 }
 
 void playMenuEnterSound() {
-  if (!audioSettings.navigationSounds) return;
+  if (!audioSettings.navigationSounds || !audioSettings.enabled) return;
   playAudioSequence(menuEnterSequence, sizeof(menuEnterSequence) / sizeof(AudioNote));
 }
 
 void playMenuExitSound() {
-  if (!audioSettings.navigationSounds) return;
+  if (!audioSettings.navigationSounds || !audioSettings.enabled) return;
   playAudioSequence(menuExitSequence, sizeof(menuExitSequence) / sizeof(AudioNote));
 }
 
 void playNavigationUpSound() {
-  if (!audioSettings.navigationSounds) return;
+  if (!audioSettings.navigationSounds || !audioSettings.enabled) return;
   playAudioSequence(navUpSequence, sizeof(navUpSequence) / sizeof(AudioNote));
 }
 
 void playNavigationDownSound() {
-  if (!audioSettings.navigationSounds) return;
+  if (!audioSettings.navigationSounds || !audioSettings.enabled) return;
   playAudioSequence(navDownSequence, sizeof(navDownSequence) / sizeof(AudioNote));
 }
 
 void playSelectSound() {
-  if (!audioSettings.navigationSounds) return;
+  if (!audioSettings.navigationSounds || !audioSettings.enabled) return;
   playAudioSequence(selectSequence, sizeof(selectSequence) / sizeof(AudioNote));
 }
 
 void playBackSound() {
-  if (!audioSettings.navigationSounds) return;
+  if (!audioSettings.navigationSounds || !audioSettings.enabled) return;
   playAudioSequence(backSequence, sizeof(backSequence) / sizeof(AudioNote));
 }
 
 void playCalibrationStartSound() {
-  if (!audioSettings.systemSounds) return;
+  if (!audioSettings.systemSounds || !audioSettings.enabled) return;
   playAudioSequence(calibrationStartSequence, sizeof(calibrationStartSequence) / sizeof(AudioNote));
 }
 
 void playCalibrationStepSound() {
-  if (!audioSettings.systemSounds) return;
+  if (!audioSettings.systemSounds || !audioSettings.enabled) return;
   playAudioSequence(calibrationStepSequence, sizeof(calibrationStepSequence) / sizeof(AudioNote));
 }
 
 void playCalibrationCompleteSound() {
-  if (!audioSettings.systemSounds) return;
+  if (!audioSettings.systemSounds || !audioSettings.enabled) return;
   playAudioSequence(calibrationCompleteSequence, sizeof(calibrationCompleteSequence) / sizeof(AudioNote));
 }
 
 void playSaveSound() {
-  if (!audioSettings.systemSounds) return;
+  if (!audioSettings.systemSounds || !audioSettings.enabled) return;
   playAudioSequence(saveSequence, sizeof(saveSequence) / sizeof(AudioNote));
 }
 
 void playErrorSound() {
-  if (!audioSettings.alertSounds) return;
+  if (!audioSettings.alertSounds || !audioSettings.enabled) return;
   playAudioSequence(errorSequence, sizeof(errorSequence) / sizeof(AudioNote));
 }
 
 void playSuccessSound() {
-  if (!audioSettings.systemSounds) return;
+  if (!audioSettings.systemSounds || !audioSettings.enabled) return;
   playAudioSequence(successSequence, sizeof(successSequence) / sizeof(AudioNote));
 }
 
 void playFactoryResetWarning() {
-  if (!audioSettings.alertSounds) return;
+  if (!audioSettings.alertSounds || !audioSettings.enabled) return;
   playAudioSequence(factoryResetWarningSequence, sizeof(factoryResetWarningSequence) / sizeof(AudioNote));
 }
 
 void playBatteryLowAlert() {
-  if (!audioSettings.alertSounds) return;
+  if (!audioSettings.alertSounds || !audioSettings.enabled) return;
   playAudioSequence(batteryLowSequence, sizeof(batteryLowSequence) / sizeof(AudioNote));
 }
 
 void playRadioLostAlert() {
-  if (!audioSettings.alertSounds) return;
+  if (!audioSettings.alertSounds || !audioSettings.enabled) return;
   playAudioSequence(radioLostSequence, sizeof(radioLostSequence) / sizeof(AudioNote));
 }
 
 void playTestSound() {
+  // Test sound should always play (for testing audio functionality)
+  if (!audioSettings.enabled) {
+    Serial.println("Test sound blocked - audio globally disabled");
+    return;
+  }
+  Serial.println("Playing test sound");
   playAudioSequence(testSequence, sizeof(testSequence) / sizeof(AudioNote));
 }
 
