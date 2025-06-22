@@ -61,7 +61,7 @@ void initRadio() {
     radio.stopListening(); // Transmitter mode
     
     Serial.println("SUCCESS!");
-    playSuccessSound();  // ADD THIS LINE
+    // playSuccessSound();  // ADD THIS LINE
 
     Serial.println("ACK system enabled for reliability tracking");
     
